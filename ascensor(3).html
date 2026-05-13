@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ascensor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #fff;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body { display: flex; flex-direction: column; }
+
+  #modePicker {
+    position: fixed; inset: 0;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px; padding: 24px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  #modePicker h1 { font-size: 22px; font-weight: 500; opacity: 0.9; margin-bottom: 4px; }
+  #modePicker p { opacity: 0.55; font-size: 14px; text-align: center; max-width: 320px; line-height: 1.5; }
+  .modeBtn {
+    width: 100%; max-width: 320px;
+    padding: 22px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    border-radius: 14px;
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .modeBtn:active { background: rgba(255,255,255,0.1); }
+  .modeBtn .sub { display: block; font-size: 12px; opacity: 0.5; margin-top: 6px; font-weight: 400; }
+
+  .roomField {
+    width: 100%; max-width: 320px;
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 8px;
+  }
+  .roomField label { font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.05em; }
+  .roomField input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 16px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    text-align: center;
+    width: 100%;
+  }
+  .roomField .hint { font-size: 11px; opacity: 0.45; line-height: 1.4; }
+
+  #displayView {
+    flex: 1;
+    display: none;
+    align-items: center; justify-content: center;
+    background: #000;
+    position: relative;
+  }
+  #displayView.active { display: flex; }
+
+  .ssd-frame {
+    background: #0a0a0a;
+    border: 2px solid #1a1a1a;
+    border-radius: 12px;
+    padding: 6vh 8vw;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+  }
+
+  .ssd { display: flex; gap: 4vw; align-items: center; }
+
+  .digit {
+    position: relative;
+    width: 18vw;
+    height: 30vw;
+    max-width: 140px;
+    max-height: 240px;
+  }
+  @media (orientation: landscape) {
+    .digit { width: 10vh; height: 17vh; max-width: 160px; max-height: 280px; }
+    .ssd { gap: 2vh; }
+    .ssd-frame { padding: 4vh 4vw; }
+  }
+
+  .seg {
+    position: absolute;
+    background: #ff1a1a;
+    box-shadow:
+      0 0 8px #ff2020,
+      0 0 16px #ff1010,
+      0 0 28px rgba(255,30,30,0.6);
+    transition: opacity 0.04s linear;
+    opacity: 0;
+  }
+  .seg.dim {
+    opacity: 0.04;
+    box-shadow: none;
+    background: #2a0606;
+  }
+  .seg.on { opacity: 1; }
+
+  .seg.h {
+    left: 10%;
+    width: 80%;
+    height: 8%;
+    clip-path: polygon(6% 50%, 16% 0%, 84% 0%, 94% 50%, 84% 100%, 16% 100%);
+  }
+  .seg.v {
+    width: 14%;
+    height: 44%;
+    clip-path: polygon(50% 3%, 100% 12%, 100% 88%, 50% 97%, 0% 88%, 0% 12%);
+  }
+  .seg-a { top: 0%; }
+  .seg-g { top: 46%; }
+  .seg-d { top: 92%; }
+  .seg-f { left: 0%;  top: 4%; }
+  .seg-b { right: 0%; top: 4%; }
+  .seg-e { left: 0%;  top: 52%; }
+  .seg-c { right: 0%; top: 52%; }
+
+  #displayBack {
+    position: absolute;
+    top: 16px; left: 16px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    z-index: 10;
+  }
+  #displayConn {
+    position: absolute;
+    top: 16px; right: 16px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    opacity: 0.7;
+  }
+  #displayConn.ok { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+  #displayConn.err { color: #f87171; border-color: rgba(248,113,113,0.3); }
+
+  #controlView {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    padding: 16px;
+    gap: 14px;
+    overflow-y: auto;
+  }
+  #controlView.active { display: flex; }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .topbar h2 { font-size: 16px; font-weight: 500; opacity: 0.8; }
+  .topbar .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .connDot {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    opacity: 0.7;
+  }
+  .connDot.ok { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+  .connDot.err { color: #f87171; border-color: rgba(248,113,113,0.3); }
+  .smallBtn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field input, .field textarea {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 18px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    width: 100%;
+  }
+  .field textarea { min-height: 80px; resize: vertical; letter-spacing: 0.1em; }
+  .field input { font-size: 16px; }
+  .field .hint { font-size: 11px; opacity: 0.45; }
+
+  .quickPad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .quickPad button {
+    aspect-ratio: 1;
+    background: rgba(255,30,30,0.08);
+    border: 1px solid rgba(255,30,30,0.25);
+    color: #ff5555;
+    border-radius: 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .quickPad button:active { background: rgba(255,30,30,0.2); }
+
+  .runBar { display: flex; gap: 10px; margin-top: 4px; }
+  .runBar button {
+    flex: 1;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #playBtn { background: #ff2020; color: #fff; }
+  #playBtn:disabled { background: #444; color: #888; }
+  #stopBtn { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+
+  .status {
+    font-size: 13px;
+    opacity: 0.6;
+    text-align: center;
+    padding: 8px;
+    min-height: 32px;
+  }
+  .status.live { color: #ff5555; opacity: 1; }
+
+  .preview {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    word-break: break-all;
+    min-height: 44px;
+  }
+  .preview .step { display: inline-block; padding: 4px 8px; margin: 2px; background: rgba(255,30,30,0.15); border-radius: 6px; color: #ff7777; }
+  .preview .step.current { background: #ff2020; color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="modePicker">
+  <h1>Tablero de Ascensor</h1>
+  <p>Elegí el rol de este dispositivo. Abrí esta misma página en otro celular y elegí el otro rol.</p>
+
+  <div class="roomField">
+    <label>Sala (igual en los 2 celus)</label>
+    <input id="roomInput" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ej: mi-ascensor">
+    <span class="hint">Cualquier palabra/código. Tiene que ser idéntica en los dos celus. Se guarda automáticamente.</span>
+  </div>
+
+  <button class="modeBtn" onclick="setMode('display')">
+    Display
+    <span class="sub">muestra el número de piso</span>
+  </button>
+  <button class="modeBtn" onclick="setMode('control')">
+    Control
+    <span class="sub">dispara la secuencia</span>
+  </button>
+</div>
+
+<div id="displayView">
+  <button id="displayBack" onclick="goHome()">← cambiar modo</button>
+  <div id="displayConn">…</div>
+  <div class="ssd-frame">
+    <div class="ssd">
+      <div class="digit" id="d1">
+        <div class="seg h seg-a"></div>
+        <div class="seg v seg-b"></div>
+        <div class="seg v seg-c"></div>
+        <div class="seg h seg-d"></div>
+        <div class="seg v seg-e"></div>
+        <div class="seg v seg-f"></div>
+        <div class="seg h seg-g"></div>
+      </div>
+      <div class="digit" id="d2">
+        <div class="seg h seg-a"></div>
+        <div class="seg v seg-b"></div>
+        <div class="seg v seg-c"></div>
+        <div class="seg h seg-d"></div>
+        <div class="seg v seg-e"></div>
+        <div class="seg v seg-f"></div>
+        <div class="seg h seg-g"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="controlView">
+  <div class="topbar">
+    <h2>Control remoto</h2>
+    <div class="right">
+      <span class="connDot" id="controlConn">…</span>
+      <button class="smallBtn" onclick="goHome()">cambiar modo</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Secuencia</label>
+    <textarea id="seqInput" placeholder="ej: PB, 1, 2, 3, 4, 5" autocapitalize="characters" autocorrect="off" spellcheck="false">PB, 1, 2, 3, 4, 5</textarea>
+    <span class="hint">Separá con coma. Soporta 0-9, A-F, H, L, P, U, b, c, d, h, n, o, r, t, y combinaciones de 2 caracteres (PB, SS, etc).</span>
+  </div>
+
+  <div class="field">
+    <label>Velocidad (ms por paso)</label>
+    <input id="speedInput" type="number" min="100" max="5000" step="100" value="1000">
+  </div>
+
+  <div class="quickPad" id="quickPad"></div>
+
+  <div class="field">
+    <label>Vista previa</label>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <div class="runBar">
+    <button id="playBtn" onclick="playSequence()">▶ Reproducir</button>
+    <button id="stopBtn" onclick="stopSequence()">■ Detener</button>
+  </div>
+
+  <div class="status" id="status">listo</div>
+</div>
+
+<script>
+// ============================================================
+// Firebase Realtime Database (REST API, sin SDK)
+// ============================================================
+const FIREBASE_URL = 'https://tablero-1c352-default-rtdb.firebaseio.com';
+
+// ============================================================
+// 7-segment encoding: bits = a,b,c,d,e,f,g (MSB→LSB)
+// ============================================================
+const SEG_MAP = {
+  '0': 0b1111110, '1': 0b0110000, '2': 0b1101101, '3': 0b1111001,
+  '4': 0b0110011, '5': 0b1011011, '6': 0b1011111, '7': 0b1110000,
+  '8': 0b1111111, '9': 0b1111011,
+  'A': 0b1110111, 'b': 0b0011111, 'C': 0b1001110, 'c': 0b0001101,
+  'd': 0b0111101, 'E': 0b1001111, 'F': 0b1000111, 'G': 0b1011110,
+  'H': 0b0110111, 'h': 0b0010111, 'I': 0b0110000, 'J': 0b0111100,
+  'L': 0b0001110, 'n': 0b0010101, 'o': 0b0011101, 'P': 0b1100111,
+  'r': 0b0000101, 'S': 0b1011011, 't': 0b0001111, 'U': 0b0111110,
+  'u': 0b0011100, 'y': 0b0110011, '-': 0b0000001, ' ': 0b0000000,
+  '_': 0b0001000,
+};
+
+function encodeChar(ch) {
+  if (SEG_MAP[ch] !== undefined) return SEG_MAP[ch];
+  const up = ch.toUpperCase();
+  if (SEG_MAP[up] !== undefined) return SEG_MAP[up];
+  const lo = ch.toLowerCase();
+  if (SEG_MAP[lo] !== undefined) return SEG_MAP[lo];
+  return 0;
+}
+
+function renderToken(token) {
+  token = String(token).trim();
+  let left, right;
+  if (token.length === 0) { left = ' '; right = ' '; }
+  else if (token.length === 1) { left = ' '; right = token; }
+  else { left = token[0]; right = token[1]; }
+  setDigit('d1', encodeChar(left));
+  setDigit('d2', encodeChar(right));
+}
+
+function setDigit(id, bits) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const segs = {
+    'seg-a': (bits >> 6) & 1,
+    'seg-b': (bits >> 5) & 1,
+    'seg-c': (bits >> 4) & 1,
+    'seg-d': (bits >> 3) & 1,
+    'seg-e': (bits >> 2) & 1,
+    'seg-f': (bits >> 1) & 1,
+    'seg-g': (bits >> 0) & 1,
+  };
+  for (const cls in segs) {
+    const seg = el.querySelector('.' + cls);
+    const isOn = segs[cls];
+    seg.classList.toggle('on', !!isOn);
+    seg.classList.toggle('dim', !isOn);
+  }
+}
+
+function clearDisplay() { renderToken('  '); }
+
+function parseSequence(text) {
+  return text
+    .split(/[,\n]+|\s{2,}/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => s.slice(0, 2));
+}
+
+// ============================================================
+// SYNC via Firebase REST API
+// ============================================================
+let currentRoom = null;
+let pollHandle = null;
+let lastSeenTs = 0;
+let connOk = false;
+
+function sanitizeRoom(s) {
+  // Firebase paths no permiten: . $ # [ ] /
+  return (s || '').trim().replace(/[.$#\[\]\/]/g, '_') || 'default';
+}
+
+function urlFor(room) {
+  return FIREBASE_URL + '/rooms/' + encodeURIComponent(sanitizeRoom(room)) + '/floor.json';
+}
+
+function setConnStatus(state) {
+  const labels = {
+    connecting: 'conectando…',
+    ok: '● en línea',
+    err: '○ sin conexión'
+  };
+  const dEl = document.getElementById('displayConn');
+  const cEl = document.getElementById('controlConn');
+  [dEl, cEl].forEach(el => {
+    if (!el) return;
+    el.textContent = labels[state];
+    el.classList.toggle('ok', state === 'ok');
+    el.classList.toggle('err', state === 'err');
+  });
+  connOk = (state === 'ok');
+}
+
+async function readFloor() {
+  if (!currentRoom) return null;
+  try {
+    const res = await fetch(urlFor(currentRoom), {
+      method: 'GET',
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text === 'null') return { token: '', ts: 0 };
+    return JSON.parse(text);
+  } catch(e) {
+    return null;
+  }
+}
+
+async function writeFloor(payload) {
+  if (!currentRoom) return false;
+  try {
+    const res = await fetch(urlFor(currentRoom), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  } catch(e) {
+    return false;
+  }
+}
+
+function startPolling(onUpdate) {
+  stopPolling();
+  let consecErrors = 0;
+
+  async function tick() {
+    const data = await readFloor();
+    if (data === null) {
+      consecErrors++;
+      if (consecErrors >= 3) setConnStatus('err');
+    } else {
+      consecErrors = 0;
+      setConnStatus('ok');
+      if (onUpdate && data.ts && data.ts !== lastSeenTs) {
+        lastSeenTs = data.ts;
+        onUpdate(data);
+      }
+    }
+    pollHandle = setTimeout(tick, 400); // 400ms poll
+  }
+  tick();
+}
+
+function stopPolling() {
+  if (pollHandle) { clearTimeout(pollHandle); pollHandle = null; }
+}
+
+// ============================================================
+// Modo
+// ============================================================
+let currentMode = null;
+
+function getRoom() {
+  return (document.getElementById('roomInput').value || '').trim();
+}
+
+async function setMode(mode) {
+  const room = getRoom();
+  if (!room) {
+    alert('Primero escribí un nombre de sala (el mismo en los 2 celus).');
+    return;
+  }
+  currentRoom = room;
+  localStorage.setItem('elevator_room', room);
+  localStorage.setItem('elevator_mode', mode);
+
+  currentMode = mode;
+  document.getElementById('modePicker').style.display = 'none';
+  document.getElementById('displayView').classList.toggle('active', mode === 'display');
+  document.getElementById('controlView').classList.toggle('active', mode === 'control');
+
+  setConnStatus('connecting');
+
+  if (mode === 'display') {
+    clearDisplay();
+    lastSeenTs = 0;
+    startPolling((data) => {
+      if (data && data.token !== undefined) renderToken(data.token);
+    });
+  } else {
+    updatePreview();
+    renderQuickPad();
+    startPolling(null); // sólo para mantener status
+  }
+}
+
+function goHome() {
+  stopSequence();
+  stopPolling();
+  currentRoom = null;
+  document.getElementById('modePicker').style.display = 'flex';
+  document.getElementById('displayView').classList.remove('active');
+  document.getElementById('controlView').classList.remove('active');
+  localStorage.removeItem('elevator_mode');
+}
+
+window.addEventListener('load', () => {
+  const savedRoom = localStorage.getItem('elevator_room');
+  if (savedRoom) document.getElementById('roomInput').value = savedRoom;
+  else document.getElementById('roomInput').value = 'ascensor';
+
+  const saved = localStorage.getItem('elevator_mode');
+  if (saved === 'display' || saved === 'control') setMode(saved);
+});
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'roomInput') {
+    localStorage.setItem('elevator_room', e.target.value.trim());
+  }
+  if (e.target.id === 'seqInput') updatePreview();
+});
+
+// ============================================================
+// CONTROL
+// ============================================================
+let runHandle = null;
+
+function playSequence() {
+  stopSequence();
+  const text = document.getElementById('seqInput').value;
+  const speed = Math.max(100, parseInt(document.getElementById('speedInput').value) || 1000);
+  const steps = parseSequence(text);
+  if (steps.length === 0) { setStatus('secuencia vacía'); return; }
+
+  setStatus('reproduciendo…', true);
+  document.getElementById('playBtn').disabled = true;
+
+  let i = 0;
+  runHandle = { stopped: false };
+
+  function tick() {
+    if (!runHandle || runHandle.stopped) return;
+    const token = steps[i];
+    highlightPreview(i);
+    // fire-and-forget: no esperamos la respuesta de Firebase
+    writeFloor({ token, ts: Date.now() });
+    i++;
+    if (i >= steps.length) {
+      setStatus('listo · última: ' + steps[steps.length-1]);
+      document.getElementById('playBtn').disabled = false;
+      runHandle = null;
+      return;
+    }
+    runHandle.timer = setTimeout(tick, speed);
+  }
+  tick();
+}
+
+function stopSequence() {
+  if (runHandle) {
+    runHandle.stopped = true;
+    if (runHandle.timer) clearTimeout(runHandle.timer);
+    runHandle = null;
+  }
+  const btn = document.getElementById('playBtn');
+  if (btn) btn.disabled = false;
+  setStatus('detenido');
+  highlightPreview(-1);
+}
+
+function setStatus(msg, live=false) {
+  const el = document.getElementById('status');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('live', live);
+}
+
+// ============================================================
+// Preview + quick pad
+// ============================================================
+function updatePreview() {
+  const text = document.getElementById('seqInput').value;
+  const steps = parseSequence(text);
+  const prev = document.getElementById('preview');
+  if (!prev) return;
+  prev.innerHTML = steps.map((s, i) => `<span class="step" data-i="${i}">${s}</span>`).join('');
+}
+function highlightPreview(idx) {
+  document.querySelectorAll('#preview .step').forEach(el => {
+    el.classList.toggle('current', parseInt(el.dataset.i) === idx);
+  });
+}
+
+function renderQuickPad() {
+  const pad = document.getElementById('quickPad');
+  if (!pad) return;
+  const tokens = ['PB','SS','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
+  pad.innerHTML = '';
+  tokens.forEach(t => {
+    const b = document.createElement('button');
+    b.textContent = t;
+    b.onclick = () => appendToken(t);
+    pad.appendChild(b);
+  });
+}
+function appendToken(t) {
+  const ta = document.getElementById('seqInput');
+  const cur = ta.value.trim();
+  ta.value = cur ? cur + ', ' + t : t;
+  updatePreview();
+}
+</script>
+</body>
+</html>

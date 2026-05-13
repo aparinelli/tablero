@@ -271,12 +271,28 @@
   .field input { font-size: 16px; }
   .field .hint { font-size: 11px; opacity: 0.45; }
 
-  .quickPad {
+  .dragDropContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dragDropPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dragDropPanel label {
+    font-size: 12px;
+    opacity: 0.55;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .availableTokens {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
   }
-  .quickPad button {
+  .availableTokens .token {
     aspect-ratio: 1;
     background: rgba(255,30,30,0.08);
     border: 1px solid rgba(255,30,30,0.25);
@@ -285,9 +301,81 @@
     font-family: ui-monospace, monospace;
     font-size: 18px;
     font-weight: 600;
-    cursor: pointer;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background 0.2s, border-color 0.2s;
   }
-  .quickPad button:active { background: rgba(255,30,30,0.2); }
+  .availableTokens .token:active { cursor: grabbing; background: rgba(255,30,30,0.2); }
+  .availableTokens .token.dragging { opacity: 0.4; }
+
+  .sequenceArea {
+    background: rgba(255,255,255,0.04);
+    border: 2px dashed rgba(255,30,30,0.3);
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 60px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+  }
+  .sequenceArea.dragover { 
+    background: rgba(255,30,30,0.1);
+    border-color: rgba(255,30,30,0.6);
+  }
+  .sequenceArea.empty::before {
+    content: "arrastrá pisos aquí";
+    position: absolute;
+    opacity: 0.4;
+    font-size: 12px;
+    pointer-events: none;
+    transform: translate(12px, 12px);
+  }
+  .sequenceArea:not(.empty)::before { content: ""; }
+
+  .sequenceItem {
+    background: rgba(255,30,30,0.15);
+    border: 1px solid rgba(255,30,30,0.4);
+    color: #ff7777;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: ui-monospace, monospace;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    position: relative;
+  }
+  .sequenceItem:active { cursor: grabbing; }
+  .sequenceItem.dragging { opacity: 0.5; }
+  .sequenceItem.dragover { 
+    background: rgba(255,30,30,0.3);
+  }
+  .sequenceItem.current {
+    background: #ff2020;
+    color: #fff;
+    border-color: rgba(255,30,30,0.8);
+  }
+  .sequenceItem .remove {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: rgba(255,255,255,0.6);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+  .sequenceItem .remove:hover { 
+    background: rgba(255,30,30,0.4);
+    color: #ff5555;
+  }
 
   .runBar { display: flex; gap: 10px; margin-top: 4px; }
   .runBar button {
@@ -407,11 +495,16 @@
     <input id="speedInput" type="number" min="100" max="5000" step="100" value="1000">
   </div>
 
-  <div class="quickPad" id="quickPad"></div>
+  <div class="dragDropContainer">
+    <div class="dragDropPanel">
+      <label>Pisos disponibles</label>
+      <div class="availableTokens" id="availableTokens"></div>
+    </div>
 
-  <div class="field">
-    <label>Vista previa</label>
-    <div class="preview" id="preview"></div>
+    <div class="dragDropPanel">
+      <label>Secuencia</label>
+      <div class="sequenceArea empty" id="sequenceArea"></div>
+    </div>
   </div>
 
   <div class="runBar">
@@ -440,7 +533,7 @@ const SEG_MAP = {
   'H': 0b0110111, 'h': 0b0010111, 'I': 0b0110000, 'J': 0b0111100,
   'L': 0b0001110, 'n': 0b0010101, 'o': 0b0011101, 'P': 0b1100111,
   'r': 0b0000101, 'S': 0b1011011, 't': 0b0001111, 'U': 0b0111110,
-  'u': 0b0011100, 'y': 0b0110011, '-': 0b0000001, ' ': 0b0000000,
+  'u': 0b0011100, 'y': 0b0110011, '-': 0b0000001, '+': 0b0110111, ' ': 0b0000000,
   '_': 0b0001000,
 };
 
@@ -617,8 +710,10 @@ async function setMode(mode, enterFs = false) {
       if (data && data.token !== undefined) renderToken(data.token);
     });
   } else {
-    updatePreview();
-    renderQuickPad();
+    sequenceItems = [];
+    renderAvailableTokens();
+    renderSequence();
+    setupDragDropArea();
     startPolling(null); // sólo para mantener status
   }
 }
@@ -663,7 +758,6 @@ document.addEventListener('input', e => {
   if (e.target.id === 'roomInput') {
     localStorage.setItem('elevator_room', e.target.value.trim());
   }
-  if (e.target.id === 'seqInput') updatePreview();
 });
 
 // ============================================================
@@ -673,9 +767,8 @@ let runHandle = null;
 
 function playSequence() {
   stopSequence();
-  const text = document.getElementById('seqInput').value;
   const speed = Math.max(100, parseInt(document.getElementById('speedInput').value) || 1000);
-  const steps = parseSequence(text);
+  const steps = sequenceItems.slice();
   if (steps.length === 0) { setStatus('secuencia vacía'); return; }
 
   setStatus('reproduciendo…', true);
@@ -687,7 +780,7 @@ function playSequence() {
   function tick() {
     if (!runHandle || runHandle.stopped) return;
     const token = steps[i];
-    highlightPreview(i);
+    highlightSequence(i);
     // fire-and-forget: no esperamos la respuesta de Firebase
     writeFloor({ token, ts: Date.now() });
     i++;
@@ -695,11 +788,19 @@ function playSequence() {
       setStatus('listo · última: ' + steps[steps.length-1]);
       document.getElementById('playBtn').disabled = false;
       runHandle = null;
+      highlightSequence(-1);
       return;
     }
     runHandle.timer = setTimeout(tick, speed);
   }
   tick();
+}
+
+function highlightSequence(idx) {
+  document.querySelectorAll('.sequenceItem').forEach(el => {
+    const itemIdx = parseInt(el.dataset.index);
+    el.classList.toggle('current', itemIdx === idx);
+  });
 }
 
 function stopSequence() {
@@ -722,38 +823,137 @@ function setStatus(msg, live=false) {
 }
 
 // ============================================================
-// Preview + quick pad
+// Drag and Drop Sequencer
 // ============================================================
-function updatePreview() {
-  const text = document.getElementById('seqInput').value;
-  const steps = parseSequence(text);
-  const prev = document.getElementById('preview');
-  if (!prev) return;
-  prev.innerHTML = steps.map((s, i) => `<span class="step" data-i="${i}">${s}</span>`).join('');
-}
-function highlightPreview(idx) {
-  document.querySelectorAll('#preview .step').forEach(el => {
-    el.classList.toggle('current', parseInt(el.dataset.i) === idx);
+let sequenceItems = [];
+const AVAILABLE_TOKENS = ['PB','SS','+','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
+
+function renderAvailableTokens() {
+  const pad = document.getElementById('availableTokens');
+  if (!pad) return;
+  pad.innerHTML = '';
+  AVAILABLE_TOKENS.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'token';
+    div.draggable = true;
+    div.textContent = t;
+    div.dataset.token = t;
+    
+    div.addEventListener('dragstart', (e) => {
+      div.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', t);
+    });
+    
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+    });
+    
+    pad.appendChild(div);
   });
 }
 
-function renderQuickPad() {
-  const pad = document.getElementById('quickPad');
-  if (!pad) return;
-  const tokens = ['PB','SS','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
-  pad.innerHTML = '';
-  tokens.forEach(t => {
-    const b = document.createElement('button');
-    b.textContent = t;
-    b.onclick = () => appendToken(t);
-    pad.appendChild(b);
+function renderSequence() {
+  const area = document.getElementById('sequenceArea');
+  if (!area) return;
+  
+  area.innerHTML = '';
+  area.classList.toggle('empty', sequenceItems.length === 0);
+  
+  sequenceItems.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'sequenceItem';
+    div.draggable = true;
+    div.dataset.index = idx;
+    
+    div.innerHTML = `
+      ${item}
+      <button class="remove" type="button">✕</button>
+    `;
+    
+    div.addEventListener('dragstart', (e) => {
+      div.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('application/json', JSON.stringify({ type: 'sequence', index: idx }));
+    });
+    
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+    });
+    
+    div.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      div.classList.add('dragover');
+    });
+    
+    div.addEventListener('dragleave', () => {
+      div.classList.remove('dragover');
+    });
+    
+    div.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      div.classList.remove('dragover');
+      
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        if (data.type === 'sequence') {
+          const fromIdx = data.index;
+          if (fromIdx !== idx) {
+            const [removed] = sequenceItems.splice(fromIdx, 1);
+            const targetIdx = fromIdx < idx ? idx - 1 : idx;
+            sequenceItems.splice(targetIdx, 0, removed);
+            renderSequence();
+          }
+        }
+      } catch(err) {}
+    });
+    
+    const removeBtn = div.querySelector('.remove');
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sequenceItems.splice(idx, 1);
+      renderSequence();
+    });
+    
+    area.appendChild(div);
   });
 }
-function appendToken(t) {
-  const ta = document.getElementById('seqInput');
-  const cur = ta.value.trim();
-  ta.value = cur ? cur + ', ' + t : t;
-  updatePreview();
+
+function setupDragDropArea() {
+  const area = document.getElementById('sequenceArea');
+  if (!area) return;
+  
+  area.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    area.classList.add('dragover');
+  });
+  
+  area.addEventListener('dragleave', (e) => {
+    if (e.target === area) area.classList.remove('dragover');
+  });
+  
+  area.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    area.classList.remove('dragover');
+    
+    try {
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (jsonData) {
+        const data = JSON.parse(jsonData);
+        if (data.type === 'sequence') return; // no hacer nada si es desde sequence
+      }
+    } catch(err) {}
+    
+    const token = e.dataTransfer.getData('text/plain');
+    if (token && AVAILABLE_TOKENS.includes(token)) {
+      sequenceItems.push(token);
+      renderSequence();
+    }
+  });
 }
 </script>
 </body>

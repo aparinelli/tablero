@@ -271,6 +271,57 @@
   .field input { font-size: 16px; }
   .field .hint { font-size: 11px; opacity: 0.45; }
 
+  .speedSliderContainer {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .speedSliderContainer input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  .speedSliderContainer input[type="range"]::-webkit-slider-track {
+    background: rgba(255,30,30,0.2);
+    border: 1px solid rgba(255,30,30,0.4);
+    border-radius: 8px;
+    height: 6px;
+  }
+  .speedSliderContainer input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff2020;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255,30,30,0.6);
+  }
+  .speedSliderContainer input[type="range"]::-moz-range-track {
+    background: rgba(255,30,30,0.2);
+    border: 1px solid rgba(255,30,30,0.4);
+    border-radius: 8px;
+    height: 6px;
+  }
+  .speedSliderContainer input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff2020;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255,30,30,0.6);
+    border: none;
+  }
+  .speedSliderContainer .speedValue {
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    color: #ff7777;
+    min-width: 50px;
+    text-align: right;
+  }
+
   .dragDropContainer {
     display: flex;
     flex-direction: column;
@@ -492,7 +543,10 @@
 
   <div class="field">
     <label>Velocidad (ms por paso)</label>
-    <input id="speedInput" type="number" min="100" max="5000" step="100" value="1000">
+    <div class="speedSliderContainer">
+      <input id="speedInput" type="range" min="100" max="5000" step="100" value="1000">
+      <span class="speedValue" id="speedValue">1000 ms</span>
+    </div>
   </div>
 
   <div class="dragDropContainer">
@@ -758,6 +812,10 @@ document.addEventListener('input', e => {
   if (e.target.id === 'roomInput') {
     localStorage.setItem('elevator_room', e.target.value.trim());
   }
+  if (e.target.id === 'speedInput') {
+    const value = e.target.value;
+    document.getElementById('speedValue').textContent = value + ' ms';
+  }
 });
 
 // ============================================================
@@ -826,7 +884,7 @@ function setStatus(msg, live=false) {
 // Drag and Drop Sequencer
 // ============================================================
 let sequenceItems = [];
-const AVAILABLE_TOKENS = ['PB','SS','9','10','11','12','13','14','15'];
+const AVAILABLE_TOKENS = ['PB','SS','0','1','2','3','4','5','6','7','8','9'];
 
 function renderAvailableTokens() {
   const pad = document.getElementById('availableTokens');

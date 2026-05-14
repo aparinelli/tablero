@@ -536,12 +536,6 @@
   </div>
 
   <div class="field">
-    <label>Secuencia</label>
-    <textarea id="seqInput" placeholder="ej: PB, 1, 2, 3, 4, 5" autocapitalize="characters" autocorrect="off" spellcheck="false">PB, 1, 2, 3, 4, 5</textarea>
-    <span class="hint">Separá con coma. Soporta 0-9, A-F, H, L, P, U, b, c, d, h, n, o, r, t, y combinaciones de 2 caracteres (PB, SS, etc).</span>
-  </div>
-
-  <div class="field">
     <label>Velocidad (ms por paso)</label>
     <div class="speedSliderContainer">
       <input id="speedInput" type="range" min="100" max="5000" step="100" value="1000">
@@ -870,7 +864,7 @@ function stopSequence() {
   const btn = document.getElementById('playBtn');
   if (btn) btn.disabled = false;
   setStatus('detenido');
-  highlightPreview(-1);
+  highlightSequence(-1);
 }
 
 function setStatus(msg, live=false) {
@@ -902,11 +896,16 @@ function renderAvailableTokens() {
       e.dataTransfer.effectAllowed = 'copy';
       e.dataTransfer.setData('text/plain', t);
     });
-    
+
     div.addEventListener('dragend', () => {
       div.classList.remove('dragging');
     });
-    
+
+    div.addEventListener('click', () => {
+      sequenceItems.push(t);
+      renderSequence();
+    });
+
     pad.appendChild(div);
   });
 }

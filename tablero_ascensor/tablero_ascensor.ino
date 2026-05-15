@@ -54,7 +54,7 @@ const uint8_t PINES[8] = {
    MOSFET canal-N comun: pin HIGH = encendido  -> deja false.
    Muchos modulos rele son "active LOW": pin LOW = encendido
    -> pone esto en true.                                      */
-const bool CANAL_INVERTIDO = false;
+const bool CANAL_INVERTIDO = true;   // modulo rele 8 canales = active LOW
 
 /* ---------- TABLA DE LA SECUENCIA ----------
    Cada fila son los 8 canales (1 = encendido, 0 = apagado),

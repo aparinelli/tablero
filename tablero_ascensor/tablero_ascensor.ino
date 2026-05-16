@@ -31,14 +31,14 @@
            e   c
             ddd
 */
-const uint8_t PIN_CH1_MAS  = 2;   // Canal 1: compuesto "3 + 1"  (IN1)
-const uint8_t PIN_B_SEG_A  = 3;   // Canal 2: segmento a de B    (IN2)
-const uint8_t PIN_B_SEG_B  = 4;   // Canal 3: segmento b de B    (IN3)
-const uint8_t PIN_B_SEG_C  = 5;   // Canal 4: segmento c de B    (IN4)
-const uint8_t PIN_B_SEG_D  = 6;   // Canal 5: segmento d de B    (IN5)
-const uint8_t PIN_B_SEG_E  = 7;   // Canal 6: segmento e de B    (IN6)
-const uint8_t PIN_B_SEG_F  = 8;   // Canal 7: segmento f de B    (IN7)
-const uint8_t PIN_B_SEG_G  = 9;   // Canal 8: segmento g de B    (IN8)
+const uint8_t PIN_CH1_MAS  = 7;   // compuesto "3 + 1"   (D7)
+const uint8_t PIN_B_SEG_A  = 6;   // segmento a de B     (D6)
+const uint8_t PIN_B_SEG_B  = 4;   // segmento b de B     (D4)
+const uint8_t PIN_B_SEG_C  = 9;   // segmento c de B     (D9)
+const uint8_t PIN_B_SEG_D  = 8;   // segmento d de B     (D8)
+const uint8_t PIN_B_SEG_E  = 5;   // segmento e de B     (D5)
+const uint8_t PIN_B_SEG_F  = 2;   // segmento f de B     (D2)
+const uint8_t PIN_B_SEG_G  = 3;   // segmento g de B     (D3)
 
 const uint8_t PIN_BOTON    = 10;  // Boton entre este pin y GND
 

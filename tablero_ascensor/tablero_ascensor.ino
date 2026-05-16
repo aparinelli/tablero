@@ -94,7 +94,11 @@ void mostrarPaso(uint8_t paso) {
 }
 
 void setup() {
+  // Dejar cada canal en "apagado" ANTES de habilitarlo como salida,
+  // asi los reles no se activan todos juntos durante el arranque.
+  const uint8_t NIVEL_APAGADO = CANAL_INVERTIDO ? HIGH : LOW;
   for (uint8_t c = 0; c < 8; c++) {
+    digitalWrite(PINES[c], NIVEL_APAGADO);
     pinMode(PINES[c], OUTPUT);
   }
   pinMode(PIN_BOTON, INPUT_PULLUP);

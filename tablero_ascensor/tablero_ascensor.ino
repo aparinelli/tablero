@@ -71,7 +71,7 @@ const uint8_t SECUENCIA[][8] = {
   {  0,   0, 1, 1, 0, 0, 0, 0 },  // paso 0:  "1"
   {  0,   1, 1, 0, 1, 1, 0, 1 },  // paso 1:  "2"
   {  0,   1, 1, 1, 1, 0, 0, 1 },  // paso 2:  "3"
-  {  1,   0, 0, 0, 0, 0, 0, 0 },  // paso 3:  "3+1"
+  {  1,   0, 0, 0, 0, 0, 0, 1 },  // paso 3:  "3+1"  (+ segmento g)
   {  0,   1, 0, 1, 1, 0, 1, 1 },  // paso 4:  "5"
 };
 const uint8_t TOTAL_PASOS = sizeof(SECUENCIA) / sizeof(SECUENCIA[0]);

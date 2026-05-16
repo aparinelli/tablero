@@ -31,16 +31,16 @@
            e   c
             ddd
 */
-const uint8_t PIN_CH1_MAS  = 3;   // Canal 1: compuesto "3 + 1"
-const uint8_t PIN_B_SEG_A  = 4;   // Canal 2: segmento a de B
-const uint8_t PIN_B_SEG_B  = 5;   // Canal 3: segmento b de B
-const uint8_t PIN_B_SEG_C  = 6;   // Canal 4: segmento c de B
-const uint8_t PIN_B_SEG_D  = 7;   // Canal 5: segmento d de B
-const uint8_t PIN_B_SEG_E  = 8;   // Canal 6: segmento e de B
-const uint8_t PIN_B_SEG_F  = 9;   // Canal 7: segmento f de B
-const uint8_t PIN_B_SEG_G  = 10;  // Canal 8: segmento g de B
+const uint8_t PIN_CH1_MAS  = 2;   // Canal 1: compuesto "3 + 1"  (IN1)
+const uint8_t PIN_B_SEG_A  = 3;   // Canal 2: segmento a de B    (IN2)
+const uint8_t PIN_B_SEG_B  = 4;   // Canal 3: segmento b de B    (IN3)
+const uint8_t PIN_B_SEG_C  = 5;   // Canal 4: segmento c de B    (IN4)
+const uint8_t PIN_B_SEG_D  = 6;   // Canal 5: segmento d de B    (IN5)
+const uint8_t PIN_B_SEG_E  = 7;   // Canal 6: segmento e de B    (IN6)
+const uint8_t PIN_B_SEG_F  = 8;   // Canal 7: segmento f de B    (IN7)
+const uint8_t PIN_B_SEG_G  = 9;   // Canal 8: segmento g de B    (IN8)
 
-const uint8_t PIN_BOTON    = 2;   // Boton entre este pin y GND
+const uint8_t PIN_BOTON    = 10;  // Boton entre este pin y GND
 
 // Orden fijo de los 8 canales para las tablas de abajo:
 // indice 0 = canal 1 (compuesto), 1..7 = segmentos a..g de B

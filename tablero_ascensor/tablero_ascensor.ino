@@ -9,9 +9,9 @@
      Canal 2..8 -> los 7 segmentos del digito B (el unico que
                  se controla segmento por segmento).
 
-   Secuencia que recorre el boton: [ 1, 2, 3, 3+1, 5 ]
+   Secuencia que recorre el boton: [ 0, 1, 2, 3, 3+1, 5 ]
    Un toque del boton avanza al siguiente. Despues del 5
-   vuelve al 1 (loop infinito).
+   vuelve al 0 (loop infinito).
 
    Cada canal va a un MOSFET canal-N (o modulo rele) que
    conmuta los 12V de la tira. Pin en HIGH = canal encendido.
@@ -61,18 +61,20 @@ const bool CANAL_INVERTIDO = true;   // modulo rele 8 canales = active LOW
    en el orden:  {3+1 , a , b , c , d , e , f , g}
 
    Digito B segun cada numero:
+     "0" -> a,b,c,d,e,f
      "1" -> b,c
      "2" -> a,b,g,e,d
      "3" -> a,b,g,c,d
      "5" -> a,f,g,c,d
-   "3+1" -> solo canal compuesto, B en blanco.                */
+   "3+1" -> canal compuesto + segmento g.                     */
 const uint8_t SECUENCIA[][8] = {
   /* 3+1  a  b  c  d  e  f  g  */
-  {  0,   0, 1, 1, 0, 0, 0, 0 },  // paso 0:  "1"
-  {  0,   1, 1, 0, 1, 1, 0, 1 },  // paso 1:  "2"
-  {  0,   1, 1, 1, 1, 0, 0, 1 },  // paso 2:  "3"
-  {  1,   0, 0, 0, 0, 0, 0, 1 },  // paso 3:  "3+1"  (+ segmento g)
-  {  0,   1, 0, 1, 1, 0, 1, 1 },  // paso 4:  "5"
+  {  0,   1, 1, 1, 1, 1, 1, 0 },  // paso 0:  "0"
+  {  0,   0, 1, 1, 0, 0, 0, 0 },  // paso 1:  "1"
+  {  0,   1, 1, 0, 1, 1, 0, 1 },  // paso 2:  "2"
+  {  0,   1, 1, 1, 1, 0, 0, 1 },  // paso 3:  "3"
+  {  1,   0, 0, 0, 0, 0, 0, 1 },  // paso 4:  "3+1"  (+ segmento g)
+  {  0,   1, 0, 1, 1, 0, 1, 1 },  // paso 5:  "5"
 };
 const uint8_t TOTAL_PASOS = sizeof(SECUENCIA) / sizeof(SECUENCIA[0]);
 
@@ -103,7 +105,7 @@ void setup() {
   }
   pinMode(PIN_BOTON, INPUT_PULLUP);
 
-  mostrarPaso(pasoActual);   // arranca mostrando el "1"
+  mostrarPaso(pasoActual);   // arranca mostrando el "0"
 }
 
 void loop() {
